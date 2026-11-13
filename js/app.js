@@ -79,23 +79,83 @@ el.btnAjustes.addEventListener('click', () => {
 });
 
 // ---------- som e voz ----------
-let audio = null;
-function bip(freq = 880, ms = 90) {
+// Celulares só liberam som depois de um toque na tela. Por isso o áudio é
+// "destravado" dentro do próprio toque (liberarAudio) e não mais tarde.
+let audio = null, vozPt = null, vozLiberada = false;
+const temVoz = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+
+function contexto() {
   try {
     audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.frequency.value = freq; g.gain.value = 0.15;
-    o.connect(g).connect(audio.destination);
-    o.start(); o.stop(audio.currentTime + ms / 1000);
+    if (audio.state !== 'running') audio.resume().catch(() => {});
+    return audio;
+  } catch { return null; }
+}
+function bip(freq = 880, ms = 90, atraso = 0, vol = 0.15) {
+  const ctx = contexto();
+  if (!ctx) return;
+  try {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    const t = ctx.currentTime + atraso, fim = t + ms / 1000;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.015);
+    g.gain.setValueAtTime(vol, Math.max(t + 0.015, fim - 0.03));
+    g.gain.linearRampToValueAtTime(0, fim);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(fim + 0.02);
   } catch { /* sem áudio */ }
 }
-function falar(txt) {
-  if (!cfg.voz || !('speechSynthesis' in window)) return;
+// Sinal sonoro da resposta: funciona mesmo sem voz instalada no aparelho.
+// SIM = dois tons subindo · NÃO = dois tons graves iguais
+function somResposta(sim) {
+  if (sim) { bip(660, 150, 0, 0.35); bip(990, 260, 0.16, 0.35); }
+  else { bip(300, 240, 0, 0.4); bip(300, 240, 0.32, 0.4); }
+}
+function escolherVoz() {
+  if (!temVoz) return;
+  const vozes = speechSynthesis.getVoices();
+  vozPt = vozes.find((v) => /^pt[-_]BR/i.test(v.lang)) || vozes.find((v) => /^pt/i.test(v.lang)) || null;
+}
+if (temVoz) {
+  escolherVoz();
+  speechSynthesis.addEventListener?.('voiceschanged', escolherVoz);
+}
+// Precisa ser chamada dentro de um toque/clique.
+function liberarAudio() {
+  contexto();
+  if (temVoz && !vozLiberada) {
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0; u.lang = 'pt-BR';
+      speechSynthesis.speak(u);
+      vozLiberada = true;
+    } catch { /* ignora */ }
+  }
+}
+document.addEventListener('pointerdown', liberarAudio, { passive: true });
+
+function falar(txt, forcar = false) {
+  if (!temVoz || (!cfg.voz && !forcar)) return;
   try {
+    if (!vozPt) escolherVoz();
     const u = new SpeechSynthesisUtterance(txt);
-    u.lang = 'pt-BR'; u.rate = 0.9;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+    u.lang = vozPt?.lang || 'pt-BR';
+    if (vozPt) u.voice = vozPt;
+    u.rate = 0.9; u.volume = 1;
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
   } catch { /* ignora */ }
+}
+function testarSom(saida) {
+  liberarAudio();
+  somResposta(true);
+  setTimeout(() => falar('Sim. O som está funcionando.', true), 450);
+  if (saida) {
+    saida.textContent = (temVoz ? 'Você deve ouvir um sinal e a voz dizendo "Sim".' : 'Este navegador não tem voz: a resposta sai só com o sinal sonoro.')
+      + ' Se não ouviu, aumente o volume de mídia e tire o aparelho do modo silencioso.';
+  }
 }
 
 // ---------- resposta ----------
@@ -107,7 +167,8 @@ function mostrarResposta(valor) {
   el.texto.textContent = sim ? 'SIM' : 'NÃO';
   el.dica.textContent = '';
   limparEm = performance.now() + 5000;
-  falar(sim ? 'Sim' : 'Não');
+  somResposta(sim);
+  setTimeout(() => falar(sim ? 'Sim' : 'Não'), sim ? 380 : 520);
   if (navigator.vibrate) navigator.vibrate(sim ? 150 : [120, 80, 120]);
   const li = document.createElement('li');
   const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -152,6 +213,7 @@ async function pedirWakeLock() {
 document.addEventListener('visibilitychange', () => { if (rodando && document.visibilityState === 'visible') pedirWakeLock(); });
 
 async function iniciar() {
+  liberarAudio(); // dentro do toque, antes de qualquer espera
   el.iniciar.disabled = true;
   el.msg.textContent = 'Abrindo a câmera…';
   try {
@@ -171,7 +233,7 @@ async function iniciar() {
       : 'Não foi possível iniciar. Verifique a internet e tente de novo.';
     return;
   }
-  bip(660, 60); // também destrava o áudio no iOS
+  bip(660, 60);
   el.msg.textContent = '';
   el.inicio.hidden = true; el.uso.hidden = false;
   rodando = true; jaCalibrou = false;
@@ -242,6 +304,8 @@ function desenharMedidores() {
 }
 
 el.iniciar.addEventListener('click', iniciar);
+$('btn-som').addEventListener('click', () => testarSom(el.msg));
+$('btn-som-uso').addEventListener('click', () => testarSom($('msg-som')));
 el.parar.addEventListener('click', parar);
 aplicarConfig();
 
