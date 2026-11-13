@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10202b">
+<title>Ajuda Olhar — SIM e NÃO com os olhos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Tela inicial -->
+<section id="tela-inicio" class="tela">
+  <h1>Ajuda Olhar</h1>
+  <p class="lead">Respostas de <strong>SIM</strong> e <strong>NÃO</strong> usando apenas os olhos.</p>
+
+  <fieldset class="modos">
+    <legend>Como a pessoa vai responder?</legend>
+    <label><input type="radio" name="modo" value="blink"> <span><b>Piscada longa</b><small>1 piscada longa = SIM · 2 piscadas longas = NÃO</small></span></label>
+    <label><input type="radio" name="modo" value="horizontal"> <span><b>Olhar para os lados</b><small>direita = SIM · esquerda = NÃO</small></span></label>
+    <label><input type="radio" name="modo" value="vertical"> <span><b>Olhar para cima / baixo</b><small>cima = SIM · baixo = NÃO</small></span></label>
+  </fieldset>
+
+  <button id="btn-iniciar" class="primario">Iniciar câmera</button>
+  <p id="msg-inicio" class="aviso" role="status"></p>
+  <p class="nota">A imagem da câmera é analisada no próprio aparelho. Nada é gravado nem enviado.</p>
+</section>
+
+<!-- Tela de uso -->
+<section id="tela-uso" class="tela" hidden>
+  <div id="resposta" class="resposta espera" aria-live="assertive">
+    <div id="resposta-icone" class="icone" aria-hidden="true"></div>
+    <div id="resposta-texto" class="texto">Aguardando…</div>
+    <div id="resposta-dica" class="dica"></div>
+  </div>
+
+  <div class="painel">
+    <div class="camera">
+      <video id="video" playsinline muted autoplay></video>
+      <span id="status-rosto" class="selo">procurando rosto…</span>
+    </div>
+
+    <div class="medidores">
+      <div class="medidor">
+        <span id="rotulo-sinal">Sinal</span>
+        <div class="barra" id="barra-sinal"><i id="sinal-fill"></i><b class="limiar" id="lim-a"></b><b class="limiar" id="lim-b"></b></div>
+      </div>
+      <div class="medidor">
+        <span>Confirmando</span>
+        <div class="barra"><i id="progresso-fill"></i></div>
+      </div>
+      <div class="botoes">
+        <button id="btn-calibrar">Calibrar centro</button>
+        <button id="btn-ajustes" aria-expanded="false">Ajustes</button>
+        <button id="btn-parar">Parar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ajustes" class="ajustes" hidden>
+    <label>Modo
+      <select id="cfg-modo">
+        <option value="blink">Piscada longa (1 = SIM, 2 = NÃO)</option>
+        <option value="horizontal">Olhar para os lados</option>
+        <option value="vertical">Olhar para cima / baixo</option>
+      </select>
+    </label>
+    <label>Tempo para confirmar: <output id="out-hold"></output>
+      <input type="range" id="cfg-hold" min="300" max="2000" step="100">
+    </label>
+    <label id="lbl-sens">Sensibilidade do olhar: <output id="out-sens"></output>
+      <input type="range" id="cfg-sens" min="1" max="10" step="1">
+    </label>
+    <label>Olho observado
+      <select id="cfg-olho">
+        <option value="both">Os dois</option>
+        <option value="left">Só o esquerdo (da pessoa)</option>
+        <option value="right">Só o direito (da pessoa)</option>
+      </select>
+    </label>
+    <label class="linha"><input type="checkbox" id="cfg-inverter"> Inverter SIM e NÃO</label>
+    <label class="linha"><input type="checkbox" id="cfg-voz"> Falar a resposta em voz alta</label>
+  </div>
+
+  <details class="historico">
+    <summary>Histórico de respostas</summary>
+    <ol id="historico" reversed></ol>
+  </details>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

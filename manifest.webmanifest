@@ -1,0 +1,11 @@
+{
+  "name": "Ajuda Olhar",
+  "short_name": "Ajuda Olhar",
+  "description": "Respostas de SIM e NÃO usando apenas os olhos.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#10202b",
+  "theme_color": "#10202b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
